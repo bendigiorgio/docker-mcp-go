@@ -1,0 +1,16 @@
+.vscode
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (vendor/)
+vendor/
+
+# Go workspace file
+go.workd
