@@ -8,19 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (c *Client) GetGeneralTools() []DockerTool {
-	return []DockerTool{
-		{
-			Tool:    mcp.NewTool("ClientVersion", mcp.WithDescription("Returns the client version")),
-			Handler: c.ClientVersionHandler,
-		},
-		{
-			Tool:    mcp.NewTool("Ping", mcp.WithDescription("Ping the Docker server")),
-			Handler: c.PingHandler,
-		},
-	}
-}
-
 /** Overall tools:
 func (cli *Client) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
 func (cli *Client) BuildCancel(ctx context.Context, id string) error

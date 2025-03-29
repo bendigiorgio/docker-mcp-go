@@ -2,6 +2,8 @@ package docker
 
 import (
 	"context"
+	"errors"
+	"sync"
 
 	"github.com/docker/docker/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -9,38 +11,96 @@ import (
 
 type Client struct {
 	cli *client.Client
+
+	// Tool management
+	tools     map[string]DockerTool
+	toolsLock sync.RWMutex
 }
 
 type DockerTool struct {
-	Tool    mcp.Tool
-	Handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+	Definition *mcp.Tool
+	Handler    ToolHandler
 }
+
+type ToolHandler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
 
 func NewClient() (*Client, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
-	return &Client{cli: cli}, nil
+
+	c := &Client{
+		cli:   cli,
+		tools: make(map[string]DockerTool),
+	}
+
+	c.initAllTools()
+	return c, nil
 }
 
-func (c *Client) CloseClient() error {
-	return c.cli.Close()
+func (c *Client) initAllTools() {
+	c.initConfigTools()
+	c.initTaskTools()
+	c.initSwarmTools()
+	c.initSecretTools()
+	c.initNodeTools()
+	c.initVolumeTools()
+	// c.initContainerTools()
+	// c.initPluginTools()
+	// c.initNetworkTools()
+	// c.initImageTools()
+	// c.initGeneralTools()
 }
 
-func (c *Client) GetAllTools() []DockerTool {
-	configTools := c.GetConfigTools()
+// RegisterTool is now type-safe and validates input
+func (c *Client) RegisterTool(tool *mcp.Tool, handler ToolHandler) error {
+	if tool == nil {
+		return ErrNilTool
+	}
+	if handler == nil {
+		return ErrNilHandler
+	}
 
-	allTools := append(configTools, c.GetContainerTools()...)
-	allTools = append(allTools, c.GetGeneralTools()...)
-	allTools = append(allTools, c.GetImageTools()...)
-	allTools = append(allTools, c.GetNetworkTools()...)
-	allTools = append(allTools, c.GetNodeTools()...)
-	allTools = append(allTools, c.GetPluginTools()...)
-	allTools = append(allTools, c.GetSecretTools()...)
-	allTools = append(allTools, c.GetServiceTools()...)
-	allTools = append(allTools, c.GetSwarmTools()...)
-	allTools = append(allTools, c.GetTaskTools()...)
-	allTools = append(allTools, c.GetVolumeTools()...)
-	return allTools
+	c.toolsLock.Lock()
+	defer c.toolsLock.Unlock()
+
+	if _, exists := c.tools[tool.Name]; exists {
+		return ErrToolExists
+	}
+
+	c.tools[tool.Name] = DockerTool{
+		Definition: tool,
+		Handler:    handler,
+	}
+	return nil
 }
+
+// GetTool returns both the definition and handler
+func (c *Client) GetTool(name string) (DockerTool, bool) {
+	c.toolsLock.RLock()
+	defer c.toolsLock.RUnlock()
+
+	tool, exists := c.tools[name]
+	return tool, exists
+}
+
+// GetAllTools returns a copy of all registered tools
+func (c *Client) GetAllTools() map[string]DockerTool {
+	c.toolsLock.RLock()
+	defer c.toolsLock.RUnlock()
+
+	// Return a copy to prevent external modification
+	toolsCopy := make(map[string]DockerTool, len(c.tools))
+	for k, v := range c.tools {
+		toolsCopy[k] = v
+	}
+	return toolsCopy
+}
+
+// Custom errors
+var (
+	ErrNilTool    = errors.New("tool definition cannot be nil")
+	ErrNilHandler = errors.New("tool handler cannot be nil")
+	ErrToolExists = errors.New("tool already exists")
+)

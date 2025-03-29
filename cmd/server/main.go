@@ -23,14 +23,14 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to initialize MCP server")
 	}
 	if transport == "sse" {
-		sseServer := server.NewSSEServer(mcpServer, server.WithBaseURL(fmt.Sprintf("http://localhost:%s", port)))
+		sseServer := server.NewSSEServer(mcpServer.MCPServer, server.WithBaseURL(fmt.Sprintf("http://localhost:%s", port)))
 		log.Info().Msgf("Starting SSE server on port %s", port)
 		if err := sseServer.Start(fmt.Sprintf(":%s", port)); err != nil {
 			log.Fatal().Err(err).Msg("Failed to start MCP server")
 		}
 	} else {
 		log.Info().Msg("Starting STDIO server")
-		if err := server.ServeStdio(mcpServer); err != nil {
+		if err := server.ServeStdio(mcpServer.MCPServer); err != nil {
 			log.Fatal().Err(err).Msg("Failed to start MCP server")
 		}
 	}
