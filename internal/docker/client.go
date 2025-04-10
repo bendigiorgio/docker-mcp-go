@@ -47,9 +47,10 @@ func (c *Client) initAllTools() {
 	c.initNodeTools()
 	c.initVolumeTools()
 	// c.initContainerTools()
-	// c.initPluginTools()
-	// c.initNetworkTools()
-	// c.initImageTools()
+	c.initPluginTools()
+	c.initServiceTools()
+	c.initNetworkTools()
+	c.initImageTools()
 	// c.initGeneralTools()
 }
 
